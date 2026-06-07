@@ -1,4 +1,6 @@
+import os
 import re
+import tempfile
 import streamlit as st
 from typing import Dict, Any
 
@@ -9,11 +11,9 @@ from programs.counters import (
     next_committed_bhakti_session,
     next_morning_rounds_session,
     next_library_live_episode,
-    next_rwwa_part,
 )
 from programs.titles import (
     build_cta_title,
-    build_rwwa_title,
     build_bhakti_sastri_title,
     build_committed_bhakti_title,
     build_morning_rounds_title,
@@ -107,7 +107,6 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
     # --- Generate button ---
     if has_video:
         if st.button("Generate Titles & Summary", key="rwwa_generate"):
-            import tempfile, os
             from services.transcription import extract_audio, transcribe
             from services.ai_content import generate_titles_and_summary
 
@@ -134,6 +133,11 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
                     st.session_state[GEN_TITLES_KEY] = result["titles"]
                     st.session_state[GEN_SUMMARY_KEY] = result["summary"]
                     st.session_state[SELECTED_TITLE_KEY] = 0
+                    # Reset editable inputs so new generated titles appear in the fields
+                    for i, t in enumerate(result["titles"]):
+                        st.session_state[f"rwwa_title_{i}"] = t
+                    st.session_state["rwwa_custom_title"] = ""
+                    st.session_state["rwwa_summary"] = result["summary"]
 
             except Exception as e:
                 st.error(f"Generation failed: {e}")
@@ -191,9 +195,6 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
     summary = st.session_state[GEN_SUMMARY_KEY]
     final_summary = st.text_area("Session summary (used as YouTube description)",
                                  value=summary, height=150, key="rwwa_summary")
-
-    if final_title:
-        st.markdown(f"**Preview title:** `{final_title}`")
 
     return {
         "title": final_title,
