@@ -27,10 +27,10 @@ The summary should capture the key themes and invite viewers to watch.\
 
 def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
     """Call Claude with transcript. Returns dict with 'titles' (list of 5 str) and 'summary' (str)."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
         raise ValueError("ANTHROPIC_API_KEY environment variable not set")
-
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-opus-4-8",
         max_tokens=1024,
@@ -59,12 +59,19 @@ def _parse_response(raw: str) -> Dict[str, object]:
             in_titles = False
             continue
         if in_titles and stripped:
-            # Strip leading "1. " numbering
-            title = re.sub(r"^\d+\.\s*", "", stripped)
-            if title:
-                titles.append(title)
+            # Only collect numbered title lines (e.g. "1. Some Title")
+            if re.match(r"^\d+\.", stripped):
+                title = re.sub(r"^\d+\.\s*", "", stripped)
+                if title:
+                    titles.append(title)
         elif in_summary and stripped:
             summary_lines.append(stripped)
+
+    if len(titles) < 5:
+        raise ValueError(
+            f"Expected 5 title suggestions from Claude, got {len(titles)}. "
+            "The response may be malformed."
+        )
 
     return {
         "titles": titles[:5],
