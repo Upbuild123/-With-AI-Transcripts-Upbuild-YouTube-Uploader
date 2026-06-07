@@ -28,11 +28,17 @@ def extract_audio(video_path: str) -> str:
             timeout=300,
         )
     except subprocess.TimeoutExpired:
-        os.unlink(audio_path)
+        try:
+            os.unlink(audio_path)
+        except FileNotFoundError:
+            pass
         raise RuntimeError("ffmpeg timed out after 5 minutes. The video file may be too large.")
 
     if result.returncode != 0:
-        os.unlink(audio_path)
+        try:
+            os.unlink(audio_path)
+        except FileNotFoundError:
+            pass
         raise RuntimeError(
             f"ffmpeg failed. Make sure ffmpeg is installed (brew install ffmpeg).\n"
             f"Error: {result.stderr.decode(errors='replace')}"

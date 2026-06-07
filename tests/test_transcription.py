@@ -49,3 +49,10 @@ def test_transcribe_returns_text():
                 result = transcribe("/tmp/audio.mp3")
 
     assert result == "Hello world"
+
+
+def test_transcribe_raises_on_missing_api_key():
+    env_without_key = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
+    with patch.dict("os.environ", env_without_key, clear=True):
+        with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+            transcribe("/tmp/audio.mp3")
