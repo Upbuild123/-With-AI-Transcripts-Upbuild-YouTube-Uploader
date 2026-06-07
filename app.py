@@ -46,9 +46,21 @@ if source_type == "Upload local file":
 else:
     drive_link = st.text_input("Google Drive link")
 
+# Derive source for RWWA form (needed before the upload button)
+_src_type = "local" if source_type == "Upload local file" else "drive"
+_src = None
+if _src_type == "local" and uploaded_file is not None:
+    _src = uploaded_file.read()
+    uploaded_file.seek(0)  # Reset so the upload button can read it again
+elif _src_type == "drive" and drive_link:
+    _src = drive_link
+
 st.divider()
 
-form_values = FORM_RENDERERS[program.key](session_date)
+if program.key == "rwwa":
+    form_values = FORM_RENDERERS[program.key](session_date, video_source=_src, video_source_type=_src_type)
+else:
+    form_values = FORM_RENDERERS[program.key](session_date)
 title = form_values.get("title", "")
 
 if title:
@@ -80,6 +92,7 @@ if st.button("Upload to YouTube", disabled=not can_upload, type="primary"):
             source_filename=source_filename,
             session_date=session_date,
             recording_type=form_values.get("recording_type"),
+            description=form_values.get("description"),
             on_progress=on_progress,
         )
 

@@ -87,31 +87,106 @@ def render_cta_form(session_date: date) -> Dict[str, Any]:
     }
 
 
-def render_rwwa_form(session_date: date) -> Dict[str, Any]:
+def render_rwwa_form(session_date: date, video_source=None, video_source_type: str = "local") -> Dict[str, Any]:
     _show_previous_title(PROGRAM_BY_KEY["rwwa"].playlist_id)
-    prev_topic = ""
-    try:
-        rwwa_titles = _cached_playlist_titles(PROGRAM_BY_KEY["rwwa"].playlist_id)
-        if rwwa_titles:
-            m = re.match(r"^RWWA - (.+?) - Part \d+", rwwa_titles[0])
-            if m:
-                prev_topic = m.group(1)
-    except Exception:
-        pass
-    topic_title = st.text_input("Session title", value=prev_topic)
-    if not topic_title:
+
+    # --- AI generation state keys ---
+    GEN_TITLES_KEY = "rwwa_gen_titles"
+    GEN_SUMMARY_KEY = "rwwa_gen_summary"
+    SELECTED_TITLE_KEY = "rwwa_selected_title_idx"
+
+    if GEN_TITLES_KEY not in st.session_state:
+        st.session_state[GEN_TITLES_KEY] = []
+    if GEN_SUMMARY_KEY not in st.session_state:
+        st.session_state[GEN_SUMMARY_KEY] = ""
+    if SELECTED_TITLE_KEY not in st.session_state:
+        st.session_state[SELECTED_TITLE_KEY] = 0
+
+    has_video = video_source is not None
+
+    # --- Generate button ---
+    if has_video:
+        if st.button("Generate Titles & Summary", key="rwwa_generate"):
+            import tempfile, os
+            from services.transcription import extract_audio, transcribe
+            from services.ai_content import generate_titles_and_summary
+
+            tmp_video_path = None
+            audio_path = None
+            try:
+                with st.spinner("Extracting audio..."):
+                    if video_source_type == "local":
+                        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+                        tmp.write(video_source)
+                        tmp.close()
+                        tmp_video_path = tmp.name
+                    else:
+                        from services.drive import drive_link_to_file_id, download_drive_file
+                        file_id = drive_link_to_file_id(video_source)
+                        tmp_video_path = download_drive_file(file_id)
+                    audio_path = extract_audio(tmp_video_path)
+
+                with st.spinner("Transcribing audio (this may take a minute)..."):
+                    transcript = transcribe(audio_path)
+
+                with st.spinner("Generating titles and summary..."):
+                    result = generate_titles_and_summary(transcript)
+                    st.session_state[GEN_TITLES_KEY] = result["titles"]
+                    st.session_state[GEN_SUMMARY_KEY] = result["summary"]
+                    st.session_state[SELECTED_TITLE_KEY] = 0
+
+            except Exception as e:
+                st.error(f"Generation failed: {e}")
+            finally:
+                if tmp_video_path and os.path.exists(tmp_video_path):
+                    os.unlink(tmp_video_path)
+                if audio_path and os.path.exists(audio_path):
+                    os.unlink(audio_path)
+
+    # --- Title selection and editing ---
+    titles = st.session_state[GEN_TITLES_KEY]
+    final_title = ""
+
+    if titles:
+        st.markdown("**Suggested titles** — select one to use, or edit any field:")
+        edited_titles = []
+        for i, t in enumerate(titles):
+            col1, col2 = st.columns([1, 8])
+            with col1:
+                selected = st.radio("", [i], index=0 if st.session_state[SELECTED_TITLE_KEY] == i else -1,
+                                    key=f"rwwa_radio_{i}", label_visibility="collapsed")
+                if selected == i:
+                    st.session_state[SELECTED_TITLE_KEY] = i
+            with col2:
+                edited = st.text_input(f"Title option {i+1}", value=t, key=f"rwwa_title_{i}",
+                                       label_visibility="collapsed")
+                edited_titles.append(edited)
+
+        idx = st.session_state[SELECTED_TITLE_KEY]
+        final_title = edited_titles[idx] if edited_titles else ""
+        st.text_input("Or type a custom title", key="rwwa_custom_title",
+                      placeholder="Leave blank to use selection above")
+        custom = st.session_state.get("rwwa_custom_title", "")
+        if custom.strip():
+            final_title = custom.strip()
+    else:
+        final_title = st.text_input("YouTube title (edit if needed)", value="")
+
+    if not final_title:
         return {}
 
-    with st.spinner("Checking YouTube for existing parts..."):
-        try:
-            titles = _cached_playlist_titles(PROGRAM_BY_KEY["rwwa"].playlist_id)
-            part_num = next_rwwa_part(titles, topic_title)
-        except Exception:
-            part_num = 1
+    # --- Summary ---
+    summary = st.session_state[GEN_SUMMARY_KEY]
+    final_summary = st.text_area("Session summary (used as YouTube description)",
+                                 value=summary, height=150, key="rwwa_summary")
 
-    part_num = st.number_input("Part number", min_value=1, value=part_num, step=1)
-    title = _editable_title(build_rwwa_title(topic_title, int(part_num), session_date))
-    return {"title": title, "topic_title": topic_title, "part_num": int(part_num)}
+    if final_title:
+        st.markdown(f"**Preview title:** `{final_title}`")
+
+    return {
+        "title": final_title,
+        "description": final_summary if final_summary.strip() else None,
+    }
 
 
 def render_bhakti_sastri_form(session_date: date) -> Dict[str, Any]:
