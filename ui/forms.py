@@ -133,6 +133,7 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
                     st.session_state[GEN_TITLES_KEY] = result["titles"]
                     st.session_state[GEN_SUMMARY_KEY] = result["summary"]
                     st.session_state[SELECTED_TITLE_KEY] = 0
+                    st.session_state["rwwa_title_radio"] = 0
                     # Reset editable inputs so new generated titles appear in the fields
                     for i, t in enumerate(result["titles"]):
                         st.session_state[f"rwwa_title_{i}"] = t
