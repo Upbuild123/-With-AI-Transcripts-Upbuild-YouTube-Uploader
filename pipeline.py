@@ -24,6 +24,7 @@ def run_pipeline(
     source_filename: str,
     session_date: date,
     recording_type: Optional[str] = None,
+    description: Optional[str] = None,
     on_progress: Optional[Callable] = None,
 ) -> UploadResult:
     def progress(msg: str):
@@ -52,7 +53,7 @@ def run_pipeline(
             service=yt_service,
             file_path=tmp_path,
             title=title,
-            description=program.description,
+            description=description if description is not None else program.description,
             playlist_id=program.playlist_id,
             on_progress=lambda pct: progress(f"Uploading to YouTube... {int(pct * 100)}%"),
         )
