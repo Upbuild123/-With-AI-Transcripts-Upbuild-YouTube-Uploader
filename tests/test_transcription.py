@@ -15,6 +15,7 @@ def test_extract_audio_calls_ffmpeg():
             mock_run.return_value = MagicMock(returncode=0)
             result = extract_audio("/path/to/video.mp4")
 
+    assert result == "/tmp/audio_abc.mp3"
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
     assert "ffmpeg" in args
@@ -43,7 +44,8 @@ def test_transcribe_returns_text():
     mock_client.audio.transcriptions.create.return_value = MagicMock(text="Hello world")
 
     with patch("services.transcription.openai.OpenAI", return_value=mock_client):
-        with patch("builtins.open", MagicMock()):
-            result = transcribe("/tmp/audio.mp3")
+        with patch("builtins.open", mock_open()):
+            with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
+                result = transcribe("/tmp/audio.mp3")
 
     assert result == "Hello world"
