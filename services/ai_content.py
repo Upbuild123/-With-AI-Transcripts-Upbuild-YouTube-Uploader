@@ -32,7 +32,7 @@ def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
 
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1024,
         messages=[
             {"role": "user", "content": _PROMPT_TEMPLATE.format(transcript=transcript)}
