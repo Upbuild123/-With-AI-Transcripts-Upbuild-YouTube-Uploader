@@ -148,25 +148,37 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
     final_title = ""
 
     if titles:
-        st.markdown("**Suggested titles** — select one to use, or edit any field:")
+        st.markdown("**Suggested titles** — select one, or edit any field below:")
+
+        # Single radio to pick which title to use
+        selected_idx = st.radio(
+            "Select a title",
+            options=list(range(len(titles))),
+            format_func=lambda i: titles[i],
+            index=st.session_state[SELECTED_TITLE_KEY],
+            key="rwwa_title_radio",
+            label_visibility="collapsed",
+        )
+        st.session_state[SELECTED_TITLE_KEY] = selected_idx
+
+        # Editable text input for each title
         edited_titles = []
         for i, t in enumerate(titles):
-            col1, col2 = st.columns([1, 8])
-            with col1:
-                selected = st.radio("", [i], index=0 if st.session_state[SELECTED_TITLE_KEY] == i else -1,
-                                    key=f"rwwa_radio_{i}", label_visibility="collapsed")
-                if selected == i:
-                    st.session_state[SELECTED_TITLE_KEY] = i
-            with col2:
-                edited = st.text_input(f"Title option {i+1}", value=t, key=f"rwwa_title_{i}",
-                                       label_visibility="collapsed")
-                edited_titles.append(edited)
+            edited = st.text_input(
+                f"Edit option {i + 1}",
+                value=t,
+                key=f"rwwa_title_{i}",
+                label_visibility="visible",
+            )
+            edited_titles.append(edited)
 
-        idx = st.session_state[SELECTED_TITLE_KEY]
-        final_title = edited_titles[idx] if edited_titles else ""
-        st.text_input("Or type a custom title", key="rwwa_custom_title",
-                      placeholder="Leave blank to use selection above")
-        custom = st.session_state.get("rwwa_custom_title", "")
+        final_title = edited_titles[selected_idx] if edited_titles else ""
+
+        custom = st.text_input(
+            "Or type a custom title",
+            key="rwwa_custom_title",
+            placeholder="Leave blank to use the selected option above",
+        )
         if custom.strip():
             final_title = custom.strip()
     else:
