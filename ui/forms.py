@@ -44,6 +44,17 @@ def _cached_playlist_titles(playlist_id: str):
     return get_playlist_titles(yt, playlist_id)
 
 
+def _cta_privacy_status() -> str:
+    privacy_label = st.radio(
+        "Visibility",
+        options=["Unlisted", "Private"],
+        index=0,
+        key="cta_privacy",
+        horizontal=True,
+    )
+    return "private" if privacy_label == "Private" else "unlisted"
+
+
 def render_cta_form(session_date: date) -> Dict[str, Any]:
     _show_previous_title(PROGRAM_BY_KEY["cta"].playlist_id)
     dates = scheduled_dates()
@@ -59,7 +70,12 @@ def render_cta_form(session_date: date) -> Dict[str, Any]:
         title = st.text_input("YouTube title", value=prev_title)
         if not title:
             return {}
-        return {"title": title, "session_date": session_date, "recording_type": None}
+        return {
+            "title": title,
+            "session_date": session_date,
+            "recording_type": None,
+            "privacy_status": _cta_privacy_status(),
+        }
 
     selected_date = st.selectbox(
         "Session date",
@@ -85,6 +101,7 @@ def render_cta_form(session_date: date) -> Dict[str, Any]:
         "season": session.season,
         "recording_type": recording_type,
         "title": title,
+        "privacy_status": _cta_privacy_status(),
     }
 
 
@@ -354,22 +371,7 @@ def render_morning_rounds_form(session_date: date, video_source=None, video_sour
     if not final_topic:
         return {}
     title = _editable_title(build_morning_rounds_title(int(session_num), final_topic, session_date))
-
-    privacy_label = st.radio(
-        "Visibility",
-        options=["Unlisted", "Private"],
-        index=0,
-        key="mr_privacy",
-        horizontal=True,
-    )
-    privacy_status = "private" if privacy_label == "Private" else "unlisted"
-
-    return {
-        "title": title,
-        "session_num": int(session_num),
-        "topic": final_topic,
-        "privacy_status": privacy_status,
-    }
+    return {"title": title, "session_num": int(session_num), "topic": final_topic}
 
 
 def render_library_live_form(session_date: date) -> Dict[str, Any]:
