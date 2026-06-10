@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import anthropic
 
@@ -23,6 +23,75 @@ SUMMARY:
 Write a 3-6 sentence summary of this session suitable for use as a YouTube video description. \
 The summary should capture the key themes and invite viewers to watch.\
 """
+
+
+_TOPIC_PROMPT_TEMPLATE = """\
+Below is a transcript from a session of "Morning Rounds", a recurring talk series at Upbuild. \
+Morning Rounds sessions are often organized into multi-part series on a single topic (e.g., \
+"Prema Vivarta - Part 9"), but a session may also begin a new series.
+
+Transcript:
+{transcript}
+{previous_topic_section}
+Please suggest 5 short topic phrases (not full titles) that capture the main subject(s) \
+discussed in this session. These will be inserted into a structured title in the form \
+"Morning Rounds - {{session_num}} - {{topic}} - {{date}}", so keep each suggestion concise \
+(a few words, optionally including a "Part N" suffix for a series).
+
+Number them 1-5, one per line, with no extra punctuation before the topic text.\
+"""
+
+_TOPIC_PROMPT_PREVIOUS_TOPIC_SECTION = """
+The previous session's topic was: "{previous_topic}"
+
+Based on the transcript, determine whether this session continues the same series as the \
+previous topic. If it clearly continues that series, include one of the 5 suggestions that \
+continues the series by incrementing its "Part N" number (e.g., if the previous topic was \
+"Prema Vivarta - Part 9", suggest "Prema Vivarta - Part 10"). If the transcript indicates a \
+new series or topic is starting, do not force a continuation suggestion — base all 5 \
+suggestions on your independent judgment of this session's content.
+"""
+
+
+def generate_topic_suggestions(transcript: str, previous_topic: Optional[str] = None) -> List[str]:
+    """Call Claude with transcript (and optional previous topic). Returns list of 5 topic strings."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+
+    if previous_topic:
+        previous_topic_section = _TOPIC_PROMPT_PREVIOUS_TOPIC_SECTION.format(previous_topic=previous_topic)
+    else:
+        previous_topic_section = ""
+
+    prompt = _TOPIC_PROMPT_TEMPLATE.format(transcript=transcript, previous_topic_section=previous_topic_section)
+
+    client = anthropic.Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = response.content[0].text
+    return _parse_topic_list(raw)
+
+
+def _parse_topic_list(raw: str) -> List[str]:
+    topics: List[str] = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if re.match(r"^\d+\.", stripped):
+            topic = re.sub(r"^\d+\.\s*", "", stripped)
+            if topic:
+                topics.append(topic)
+
+    if len(topics) < 5:
+        raise ValueError(
+            f"Expected 5 topic suggestions from Claude, got {len(topics)}. "
+            "The response may be malformed."
+        )
+
+    return topics[:5]
 
 
 def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
