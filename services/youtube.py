@@ -60,7 +60,10 @@ def get_playlist_titles(service, playlist_id: str):
             pageToken=page_token,
         ).execute()
         for item in resp.get("items", []):
-            titles.append(item["snippet"]["title"])
+            title = item["snippet"]["title"]
+            if title in ("Deleted video", "Private video"):
+                continue
+            titles.append(title)
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
