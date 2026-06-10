@@ -88,7 +88,7 @@ def _parse_topic_list(raw: str) -> List[str]:
     if len(topics) < 5:
         raise ValueError(
             f"Expected 5 topic suggestions from Claude, got {len(topics)}. "
-            "The response may be malformed."
+            f"Raw response was: {raw!r}"
         )
 
     return topics[:5]
