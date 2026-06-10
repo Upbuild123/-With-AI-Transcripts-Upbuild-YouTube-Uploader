@@ -80,8 +80,8 @@ def _parse_topic_list(raw: str) -> List[str]:
     topics: List[str] = []
     for line in raw.splitlines():
         stripped = line.strip().strip("*").strip()
-        if re.match(r"^\d+[\.\):]\s*", stripped):
-            topic = re.sub(r"^\d+[\.\):]\s*", "", stripped).strip("*").strip()
+        if re.match(r"^\d+[\.\):]?\s+", stripped):
+            topic = re.sub(r"^\d+[\.\):]?\s+", "", stripped).strip("*").strip()
             if topic:
                 topics.append(topic)
 
