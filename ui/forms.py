@@ -237,7 +237,7 @@ def render_committed_bhakti_form(session_date: date) -> Dict[str, Any]:
     return {"title": title, "session_num": int(session_num), "topics": topics}
 
 
-def render_morning_rounds_form(session_date: date) -> Dict[str, Any]:
+def render_morning_rounds_form(session_date: date, video_source=None, video_source_type: str = "local") -> Dict[str, Any]:
     _show_previous_title(PROGRAM_BY_KEY["morning_rounds"].playlist_id)
     mr_titles = []
     with st.spinner("Fetching session number from YouTube..."):
@@ -248,17 +248,113 @@ def render_morning_rounds_form(session_date: date) -> Dict[str, Any]:
             session_num = 1
 
     prev_topic = ""
+    previous_topic_full = None
     if mr_titles:
         m = re.match(r"^Morning Rounds - \d+ - (.+?) - Part \d+", mr_titles[0])
         if m:
             prev_topic = m.group(1)
+        m_full = re.match(r"^Morning Rounds - \d+ - (.+) - \w+ \d{1,2}, \d{4}$", mr_titles[0])
+        if m_full:
+            previous_topic_full = m_full.group(1)
 
     session_num = st.number_input("Session number", min_value=1, value=session_num, step=1)
-    topic = st.text_input("Topic", value=prev_topic)
-    if not topic:
+
+    # --- AI generation state keys ---
+    GEN_TOPICS_KEY = "mr_gen_topics"
+    SELECTED_TOPIC_KEY = "mr_selected_topic_idx"
+
+    if GEN_TOPICS_KEY not in st.session_state:
+        st.session_state[GEN_TOPICS_KEY] = []
+    if SELECTED_TOPIC_KEY not in st.session_state:
+        st.session_state[SELECTED_TOPIC_KEY] = 0
+
+    has_video = video_source is not None
+
+    # --- Generate button ---
+    if has_video:
+        if st.button("Generate Topic Suggestions", key="mr_generate"):
+            from services.transcription import extract_audio, transcribe
+            from services.ai_content import generate_topic_suggestions
+
+            tmp_video_path = None
+            audio_path = None
+            try:
+                with st.spinner("Extracting audio..."):
+                    if video_source_type == "local":
+                        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+                        tmp.write(video_source)
+                        tmp.close()
+                        tmp_video_path = tmp.name
+                    else:
+                        from services.drive import drive_link_to_file_id, download_drive_file
+                        file_id = drive_link_to_file_id(video_source)
+                        tmp_video_path = download_drive_file(file_id)
+                    audio_path = extract_audio(tmp_video_path)
+
+                with st.spinner("Transcribing audio (this may take a minute)..."):
+                    transcript = transcribe(audio_path)
+
+                with st.spinner("Generating topic suggestions..."):
+                    topics = generate_topic_suggestions(transcript, previous_topic=previous_topic_full)
+                    st.session_state[GEN_TOPICS_KEY] = topics
+                    st.session_state[SELECTED_TOPIC_KEY] = 0
+                    st.session_state["mr_topic_radio"] = 0
+                    # Reset editable inputs so new generated topics appear in the fields
+                    for i, t in enumerate(topics):
+                        st.session_state[f"mr_topic_{i}"] = t
+                    st.session_state["mr_custom_topic"] = ""
+
+            except Exception as e:
+                st.error(f"Generation failed: {e}")
+            finally:
+                if tmp_video_path and os.path.exists(tmp_video_path):
+                    os.unlink(tmp_video_path)
+                if audio_path and os.path.exists(audio_path):
+                    os.unlink(audio_path)
+
+    # --- Topic selection and editing ---
+    topics = st.session_state[GEN_TOPICS_KEY]
+    final_topic = ""
+
+    if topics:
+        st.markdown("**Suggested topics** — select one, or edit any field below:")
+
+        selected_idx = st.radio(
+            "Select a topic",
+            options=list(range(len(topics))),
+            format_func=lambda i: build_morning_rounds_title(int(session_num), topics[i], session_date),
+            index=st.session_state[SELECTED_TOPIC_KEY],
+            key="mr_topic_radio",
+            label_visibility="collapsed",
+        )
+        st.session_state[SELECTED_TOPIC_KEY] = selected_idx
+
+        edited_topics = []
+        for i, t in enumerate(topics):
+            edited = st.text_input(
+                f"Edit option {i + 1}",
+                value=t,
+                key=f"mr_topic_{i}",
+                label_visibility="visible",
+            )
+            edited_topics.append(edited)
+
+        final_topic = edited_topics[selected_idx] if edited_topics else ""
+
+        custom = st.text_input(
+            "Or type a custom topic",
+            key="mr_custom_topic",
+            placeholder="Leave blank to use the selected option above",
+        )
+        if custom.strip():
+            final_topic = custom.strip()
+    else:
+        final_topic = st.text_input("Topic", value=prev_topic)
+
+    if not final_topic:
         return {}
-    title = _editable_title(build_morning_rounds_title(int(session_num), topic, session_date))
-    return {"title": title, "session_num": int(session_num), "topic": topic}
+    title = _editable_title(build_morning_rounds_title(int(session_num), final_topic, session_date))
+    return {"title": title, "session_num": int(session_num), "topic": final_topic}
 
 
 def render_library_live_form(session_date: date) -> Dict[str, Any]:
