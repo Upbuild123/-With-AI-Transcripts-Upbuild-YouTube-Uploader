@@ -57,7 +57,7 @@ elif _src_type == "drive" and drive_link:
 
 st.divider()
 
-if program.key == "rwwa":
+if program.key in ("rwwa", "morning_rounds"):
     form_values = FORM_RENDERERS[program.key](session_date, video_source=_src, video_source_type=_src_type)
 else:
     form_values = FORM_RENDERERS[program.key](session_date)
