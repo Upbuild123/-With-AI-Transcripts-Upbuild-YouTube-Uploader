@@ -69,19 +69,19 @@ def generate_topic_suggestions(transcript: str, previous_topic: Optional[str] = 
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-opus-4-8",
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw = response.content[0].text
+    raw = "".join(block.text for block in response.content if hasattr(block, "text"))
     return _parse_topic_list(raw)
 
 
 def _parse_topic_list(raw: str) -> List[str]:
     topics: List[str] = []
     for line in raw.splitlines():
-        stripped = line.strip()
-        if re.match(r"^\d+\.", stripped):
-            topic = re.sub(r"^\d+\.\s*", "", stripped)
+        stripped = line.strip().strip("*").strip()
+        if re.match(r"^\d+[\.\):]\s*", stripped):
+            topic = re.sub(r"^\d+[\.\):]\s*", "", stripped).strip("*").strip()
             if topic:
                 topics.append(topic)
 
