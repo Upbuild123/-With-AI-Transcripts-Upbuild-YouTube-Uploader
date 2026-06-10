@@ -93,6 +93,7 @@ if st.button("Upload to YouTube", disabled=not can_upload, type="primary"):
             session_date=session_date,
             recording_type=form_values.get("recording_type"),
             description=form_values.get("description"),
+            privacy_status=form_values.get("privacy_status", "unlisted"),
             on_progress=on_progress,
         )
 

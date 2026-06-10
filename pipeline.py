@@ -26,6 +26,7 @@ def run_pipeline(
     recording_type: Optional[str] = None,
     description: Optional[str] = None,
     on_progress: Optional[Callable] = None,
+    privacy_status: str = "unlisted",
 ) -> UploadResult:
     def progress(msg: str):
         if on_progress:
@@ -56,6 +57,7 @@ def run_pipeline(
             description=description if description is not None else program.description,
             playlist_id=program.playlist_id,
             on_progress=lambda pct: progress(f"Uploading to YouTube... {int(pct * 100)}%"),
+            privacy_status=privacy_status,
         )
 
         if program_key == "cta":

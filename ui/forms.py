@@ -354,7 +354,22 @@ def render_morning_rounds_form(session_date: date, video_source=None, video_sour
     if not final_topic:
         return {}
     title = _editable_title(build_morning_rounds_title(int(session_num), final_topic, session_date))
-    return {"title": title, "session_num": int(session_num), "topic": final_topic}
+
+    privacy_label = st.radio(
+        "Visibility",
+        options=["Unlisted", "Private"],
+        index=0,
+        key="mr_privacy",
+        horizontal=True,
+    )
+    privacy_status = "private" if privacy_label == "Private" else "unlisted"
+
+    return {
+        "title": title,
+        "session_num": int(session_num),
+        "topic": final_topic,
+        "privacy_status": privacy_status,
+    }
 
 
 def render_library_live_form(session_date: date) -> Dict[str, Any]:
