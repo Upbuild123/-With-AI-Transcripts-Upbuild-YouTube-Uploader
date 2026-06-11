@@ -9,6 +9,15 @@ _PROMPT_TEMPLATE = """\
 Below is a transcript from a session of "Remembering Who We Are" (RWWA), a weekly community \
 gathering at Upbuild focused on spiritual reflection and reconnecting with a deeper sense of self.
 
+Note: the first several minutes of most sessions are a standard introduction where a \
+facilitator reminds everyone of the program's purpose (helping people move from the ego to \
+the true self and cultivate a spiritual orientation to the world) and the three pillars of \
+the culture asked of all participants (full-hearted participation, respect, and \
+determination). This introduction is the same general content every week (even if the exact \
+wording varies) and is NOT specific to this session. Do not let this recurring introduction \
+influence the title suggestions, and do not include it in the summary — focus only on the \
+specific topics, themes, and content discussed in the rest of the session.
+
 Transcript:
 {transcript}
 
