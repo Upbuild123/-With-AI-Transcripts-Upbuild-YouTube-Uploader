@@ -12,6 +12,7 @@ from programs.counters import (
     next_committed_bhakti_session,
     next_morning_rounds_session,
     next_library_live_episode,
+    next_rwwa_part,
 )
 from programs.titles import (
     build_cta_title,
@@ -19,6 +20,7 @@ from programs.titles import (
     build_committed_bhakti_title,
     build_morning_rounds_title,
     build_library_live_title,
+    build_rwwa_title,
 )
 from services.youtube import load_youtube_service, get_playlist_titles
 from config import PROGRAM_BY_KEY
@@ -206,6 +208,20 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
             final_title = custom.strip()
     else:
         final_title = st.text_input("YouTube title (edit if needed)", value="")
+
+    if not final_title:
+        return {}
+
+    try:
+        rwwa_titles = _cached_playlist_titles(PROGRAM_BY_KEY["rwwa"].playlist_id)
+    except Exception:
+        rwwa_titles = []
+    part_num = next_rwwa_part(rwwa_titles, final_title)
+    final_title = st.text_input(
+        "YouTube title (with RWWA prefix, part #, and date)",
+        value=build_rwwa_title(final_title, part_num, session_date),
+        key="rwwa_final_title",
+    )
 
     if not final_title:
         return {}
