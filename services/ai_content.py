@@ -20,7 +20,7 @@ specific topics, themes, and content discussed in the rest of the session.
 
 Transcript:
 {transcript}
-
+{previous_title_section}
 Please provide:
 
 TITLES:
@@ -31,6 +31,18 @@ with no extra punctuation before the title text.
 SUMMARY:
 Write a 3-6 sentence summary of this session suitable for use as a YouTube video description. \
 The summary should capture the key themes and invite viewers to watch.\
+"""
+
+
+_RWWA_PREVIOUS_TITLE_SECTION = """
+The previous session's title was: "{previous_title}"
+
+Based on the transcript, determine whether this session continues the same topic/series as the \
+previous title. If it clearly continues that series, include one of the 5 title suggestions \
+that continues the series by incrementing its "Part N" number (e.g., if the previous title \
+ended with "Part 3", suggest a title ending with "Part 4"). If the transcript indicates a new \
+topic or series is starting, do not force a continuation suggestion — base all 5 suggestions \
+on your independent judgment of this session's content.
 """
 
 
@@ -110,17 +122,23 @@ def _parse_topic_list(raw: str) -> List[str]:
     return topics[:5]
 
 
-def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
-    """Call Claude with transcript. Returns dict with 'titles' (list of 5 str) and 'summary' (str)."""
+def generate_titles_and_summary(transcript: str, previous_title: Optional[str] = None) -> Dict[str, object]:
+    """Call Claude with transcript (and optional previous title). Returns dict with 'titles' (list of 5 str) and 'summary' (str)."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+
+    if previous_title:
+        previous_title_section = _RWWA_PREVIOUS_TITLE_SECTION.format(previous_title=previous_title)
+    else:
+        previous_title_section = ""
+
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-opus-4-8",
         max_tokens=1024,
         messages=[
-            {"role": "user", "content": _PROMPT_TEMPLATE.format(transcript=transcript)}
+            {"role": "user", "content": _PROMPT_TEMPLATE.format(transcript=transcript, previous_title_section=previous_title_section)}
         ],
     )
     raw = "".join(block.text for block in response.content if hasattr(block, "text"))

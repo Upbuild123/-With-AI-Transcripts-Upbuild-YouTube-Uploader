@@ -149,7 +149,12 @@ def render_rwwa_form(session_date: date, video_source=None, video_source_type: s
                     transcript = transcribe(audio_path)
 
                 with st.spinner("Generating titles and summary..."):
-                    result = generate_titles_and_summary(transcript)
+                    try:
+                        prev_titles = _cached_playlist_titles(PROGRAM_BY_KEY["rwwa"].playlist_id)
+                        previous_title = prev_titles[0] if prev_titles else None
+                    except Exception:
+                        previous_title = None
+                    result = generate_titles_and_summary(transcript, previous_title=previous_title)
                     st.session_state[GEN_TITLES_KEY] = result["titles"]
                     st.session_state[GEN_SUMMARY_KEY] = result["summary"]
                     st.session_state[SELECTED_TITLE_KEY] = 0
