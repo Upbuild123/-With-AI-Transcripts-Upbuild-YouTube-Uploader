@@ -116,7 +116,7 @@ def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
             {"role": "user", "content": _PROMPT_TEMPLATE.format(transcript=transcript)}
         ],
     )
-    raw = response.content[0].text
+    raw = "".join(block.text for block in response.content if hasattr(block, "text"))
     return _parse_response(raw)
 
 
@@ -137,9 +137,10 @@ def _parse_response(raw: str) -> Dict[str, object]:
             in_titles = False
             continue
         if in_titles and stripped:
-            # Only collect numbered title lines (e.g. "1. Some Title")
-            if re.match(r"^\d+\.", stripped):
-                title = re.sub(r"^\d+\.\s*", "", stripped)
+            # Only collect numbered title lines (e.g. "1. Some Title", "1 Some Title")
+            stripped = stripped.strip("*").strip()
+            if re.match(r"^\d+[\.\):]?\s+", stripped):
+                title = re.sub(r"^\d+[\.\):]?\s+", "", stripped).strip("*").strip()
                 if title:
                     titles.append(title)
         elif in_summary and stripped:
@@ -148,7 +149,7 @@ def _parse_response(raw: str) -> Dict[str, object]:
     if len(titles) < 5:
         raise ValueError(
             f"Expected 5 title suggestions from Claude, got {len(titles)}. "
-            "The response may be malformed."
+            f"Raw response was: {raw!r}"
         )
 
     return {
