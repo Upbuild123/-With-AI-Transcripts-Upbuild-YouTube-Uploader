@@ -34,6 +34,13 @@ The summary should capture the key themes and invite viewers to watch.\
 """
 
 
+_RWWA_DESCRIPTION_FOOTER = """\
+🌐 Upbuild: https://upbuild.com
+🎙️ Upbuild Podcast: https://upbuild.com/podcast
+📅 Join Remembering Who We Are: https://upbuild.com/remembering-who-we-are\
+"""
+
+
 _TOPIC_PROMPT_TEMPLATE = """\
 Below is a transcript from a session of "Morning Rounds", a recurring talk series at Upbuild. \
 Morning Rounds sessions are often organized into multi-part series on a single topic (e.g., \
@@ -117,7 +124,9 @@ def generate_titles_and_summary(transcript: str) -> Dict[str, object]:
         ],
     )
     raw = "".join(block.text for block in response.content if hasattr(block, "text"))
-    return _parse_response(raw)
+    result = _parse_response(raw)
+    result["summary"] = result["summary"] + "\n\n" + _RWWA_DESCRIPTION_FOOTER
+    return result
 
 
 def _parse_response(raw: str) -> Dict[str, object]:
